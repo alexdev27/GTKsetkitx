@@ -1,11 +1,13 @@
 import gi
+import requests
+
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
 
 btn_text = {'add': 'К добавлению', 'rm': 'К удалению'}
 barcodes = {
-    '2227302': ('2227302', 'Каша овсяная 300г',  45)
+    '2227302': ['2227302', 'Каша овсяная 300г',  45, 1]
 }
 
 headers = ['Баркод', 'Название', 'Цена', 'Количество']
@@ -39,18 +41,17 @@ class TreeViewFilterWindow(Gtk.Window):
 
         self.tree_view_left = Gtk.TreeView(model=self.liststore_left)
         self.tree_view_right = Gtk.TreeView(model=self.liststore_right)
-        # print(tree_view)
 
         for i, header in enumerate(headers):
             if header == 'Количество':
                 renderer_spin = Gtk.CellRendererSpin(editable=True)
                 renderer_spin.connect("edited", self.on_amount_edited, self.liststore_left)
-                adjustment = Gtk.Adjustment(0, 0, 100, 1, 10, 0)
+                adjustment = Gtk.Adjustment(0, 0, 9999, 1, 10, 0)
                 renderer_spin.set_property("adjustment", adjustment)
                 self.tree_view_left.append_column(Gtk.TreeViewColumn(header, renderer_spin, text=i))
                 renderer_spin = Gtk.CellRendererSpin(editable=True)
                 renderer_spin.connect("edited", self.on_amount_edited, self.liststore_right)
-                adjustment = Gtk.Adjustment(0, 0, 100, 1, 10, 0)
+                # adjustment = Gtk.Adjustment(0, 0, 9999, 1, 10, 0)
                 renderer_spin.set_property("adjustment", adjustment)
                 self.tree_view_right.append_column(Gtk.TreeViewColumn(header, renderer_spin, text=i))
                 break
@@ -99,15 +100,24 @@ class TreeViewFilterWindow(Gtk.Window):
         else:
             liststore = self.liststore_left
 
-        for row in liststore:
-            if row[0] == barcode:
-                print('matched ', row[0], barcode)
-                row[3] += 1
-                return
+        if barcode in barcodes.keys():
 
-        info = get_submited_barcode_info(barcode)
+            for row in liststore:
+                if row[0] == barcode:
+                    print('matched ', row[0], barcode)
+                    row[3] += barcodes[barcode][3]
+                    return
+            liststore.append(barcodes[barcode])
+            return
+
+
+        info = request_to_wareinfo(barcode)
+        print('Heres ', info)
+
         if info:
-            liststore.append([*info, 1])
+            _list = [info['code'], info['name'], info['price'], info['quantity']]
+            barcodes[info['code']] = _list
+            liststore.append(_list)
 
     def on_amount_edited(self, widget, path, value, liststore):
         liststore[path][3] = int(value)
@@ -121,6 +131,21 @@ def get_submited_barcode_info(barcode):
     info = barcodes.get(str(barcode))
 
     return info
+
+from config import WAREINFO_API_URL
+
+def request_to_wareinfo(barcode):
+    timeouts = 2
+
+    try:
+        res = requests.get(WAREINFO_API_URL + barcode, timeout=timeouts)
+        if res.status_code >= 400:
+            print('Ошибка запроса. Код ошибки: ', res.status_code)
+            return None
+        return res.json()
+    except requests.RequestException as e:
+        print(f'Request Exception: {e}')
+        return None
 
 
 win = TreeViewFilterWindow()
