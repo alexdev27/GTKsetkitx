@@ -1,9 +1,10 @@
+from config import WAREINFO_API_URL
 import requests
-from os import environ as envs
 
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
+
 
 class MyWindow(Gtk.Window):
 
@@ -30,11 +31,11 @@ def launch():
 
 
 def request_to_wareinfo(barcode):
-    timeouts = (6, 6)
+    timeouts = 2
 
     try:
-        res = requests.get(envs['WAREINFO_API_URL'] + barcode, timeout=timeouts)
+        res = requests.get(WAREINFO_API_URL + barcode, timeout=timeouts)
         print(res.json())
     except requests.RequestException as e:
-        print('Request Exception: ' + str(e))
+        print(f'Request Exception: {e}')
 
