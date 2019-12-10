@@ -5,11 +5,11 @@ from config import WAREINFO_API_URL
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
-from pprint import pprint as pp
+# from pprint import pprint as pp
 
 btn_text = {'add': 'К добавлению', 'rm': 'К удалению'}
-barcodes = {
-    # '2227302': ['2227302', 'Каша овсяная 300г',  45, 1]
+prod_codes = {
+    # '2227302': ['2227302', 'Каша овсяная 300г',  45, 1, 'кг\шт\etc']
 }
 
 # {'barcode': ['code', 'qty']}
@@ -38,7 +38,7 @@ class TreeViewFilterWindow(Gtk.Window):
         self.liststore_left = Gtk.ListStore(str, str, float, float, str)
         self.liststore_right = Gtk.ListStore(str, str, float, float, str)
 
-        # for i in barcodes.values():
+        # for i in prod_codes.values():
         #     tpl = list(i)
         #     tpl.append(5)
         #     self.liststore_left.append(tpl)
@@ -115,17 +115,27 @@ class TreeViewFilterWindow(Gtk.Window):
         if check_in_product_codes_list_and_modify(barcode, liststore):
             return
 
-
         info = request_to_wareinfo(barcode)
-        print(f'barcode_info: {info["code"]} - {info["measure"]} - {info["quantity"]}')
 
         if not info:
             return
 
+        print(f'barcode_info: {info["code"]} - {info["measure"]} - {info["quantity"]}')
+
         process_success_request(info, barcode, liststore)
 
     def on_amount_edited(self, widget, path, value, liststore):
-        liststore[path][3] = int(value)
+        p = prod_codes[liststore[path][0]]
+        p_price = p[2]
+        p_measure = p[4]
+        val = float(value)
+        if p_measure != 'кг':
+            val = int(float(value))
+
+        new_price = val * p_price
+
+        liststore[path][3] = val
+        liststore[path][2] = new_price
 
 
 def request_to_wareinfo(barcode):
@@ -150,11 +160,11 @@ def request_to_wareinfo(barcode):
 
 def check_in_main_list_of_barcodes_and_modify(barcode, liststore):
     if barcode in barcode_and_code.keys():
-        if barcode_and_code[barcode][0] in barcodes.keys():
+        if barcode_and_code[barcode][0] in prod_codes.keys():
             ratio = barcode_and_code[barcode][1]
             code = barcode_and_code[barcode][0]
-            price = barcodes[code][2]
-            qty = barcodes[code][3]
+            price = prod_codes[code][2]
+            qty = prod_codes[code][3]
             for row in liststore:
                 if row[0] == code:
                     row[3] += (ratio * qty)
@@ -164,13 +174,13 @@ def check_in_main_list_of_barcodes_and_modify(barcode, liststore):
 
 
 def check_in_product_codes_list_and_modify(barcode, liststore):
-    if barcode in barcodes.keys():
+    if barcode in prod_codes.keys():
         for row in liststore:
             if row[0] == barcode:
-                row[3] += barcodes[barcode][3]
-                row[2] += barcodes[barcode][2]
+                row[3] += prod_codes[barcode][3]
+                row[2] += prod_codes[barcode][2]
                 return True
-        liststore.append(barcodes[barcode])
+        liststore.append(prod_codes[barcode])
         return True
     return False
 
@@ -186,7 +196,7 @@ def process_success_request(info, barcode, liststore):
     actual_qty = float(ratio * qty)
 
     # если код есть в мапке кодов продукта
-    if code in barcodes.keys():
+    if code in prod_codes.keys():
         for row in liststore:
             if row[0] == code:
                 row[2] += actual_price
@@ -196,7 +206,7 @@ def process_success_request(info, barcode, liststore):
     _list_to_cache = [code, name, price, qty, measure]
     _list_to_view = [code, name, actual_price, actual_qty, measure]
 
-    barcodes[code] = _list_to_cache
+    prod_codes[code] = _list_to_cache
     liststore.append(_list_to_view)
     # сохраняю инфу о таком баркоде
     barcode_and_code[barcode] = [code, ratio]
