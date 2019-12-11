@@ -1,7 +1,6 @@
 import requests
 from config import WAREINFO_API_URL
-from .models import prod_codes, barcode_and_code
-
+from .models import prod_codes, barcodes
 
 
 def request_to_wareinfo(barcode):
@@ -24,95 +23,72 @@ def request_to_wareinfo(barcode):
         return None
 
 
-def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
-    # barcodes_and_codes = window.barcodes_and_codes
-    # prod_codes = window.prod_codes
-    liststore = window.liststore
-    if barcode in barcode_and_code.keys():
-        if barcode_and_code[barcode][0] in prod_codes.keys():
-            ratio = barcode_and_code[barcode][1]
-            code = barcode_and_code[barcode][0]
-            qty = barcode_and_code[barcode][2]
-            price = prod_codes[code][2]
-
-            actual_qty = ratio * qty
-            actual_price = ratio * qty * price
-
-            print(f'add right price and quantity:  {actual_qty} - {actual_price}')
-
-            if check_row_exist(liststore, code):
-                return modify_liststore_row(code, liststore, command, actual_qty, actual_price)
-            else:
-                if command == 'REMOVE':
-                    return True
-                print(' ---> Append without request')
-                name = prod_codes[code][1]
-                measure = prod_codes[code][3]
-                print(prod_codes[code])
-                args = [code, name, actual_price, actual_qty, measure]
-                print(args)
-                append_to_liststore(liststore, *args)
-                return True
-
-            # return modify_liststore_row(code, liststore, command, actual_qty, actual_price)
-    return False
-
-
-# def check_in_product_codes_list_and_modify(barcode, liststore):
-#     if barcode in prod_codes.keys():
-#         for row in liststore:
-#             if row[0] == barcode:
-#                 row[3] += prod_codes[barcode][3]
-#                 row[2] += prod_codes[barcode][2]
-#                 return True
-#         liststore.append(prod_codes[barcode])
-#         return True
-#     return False
+def check_in_main_list_of_barcodes_and_modify(barcode, command, liststore):
+    if barcode not in barcodes.keys():
+        return False
+    else:
+        kwargs = {'barcode': barcode, 'command': command, 'liststore': liststore}
+        return _add_or_remove(info=None, from_request=False, **kwargs)
 
 
 def modify_liststore_row(prod_code, liststore, command, actual_qty, actual_price):
     for indx, row in enumerate(liststore):
         if row[0] == prod_code:
-            exec_command(indx, liststore, command, row, actual_qty, actual_price)
-            return True
+            return exec_command(indx, liststore, command, row, actual_qty, actual_price)
     return False
 
 
-def process_success_request(info, barcode, command, window):
-    # barcode_and_code = window.barcodes_and_codes
-    # prod_codes = window.prod_codes
-    liststore = window.liststore
-    code = info['code']
-    name = info['name']
-    ratio = info['ratio']
-    price = info['price']
-    qty = info['quantity']
-    measure = info['measure']
+def process_success_request(info, barcode, command, liststore):
+    kwargs = {'barcode': barcode, 'command': command, 'liststore': liststore}
+    _add_or_remove(info, from_request=True, **kwargs)
+
+
+def _add_or_remove(info, from_request, **kwargs):
+    barcode = kwargs['barcode']
+    liststore = kwargs['liststore']
+    command = kwargs['command']
+    if from_request:
+        code = info['code']
+        name = info['name']
+        ratio = info['ratio']
+        price = info['price']
+        qty = info['quantity']
+        measure = info['measure']
+    else:
+        ratio = barcodes[barcode][1]
+        code = barcodes[barcode][0]
+        qty = barcodes[barcode][2]
+        price = prod_codes[code][2]
+        name = prod_codes[code][1]
+        measure = prod_codes[code][3]
+
     actual_price = float(ratio * price * qty)
     actual_qty = float(ratio * qty)
 
-    _list_to_cache = [code, name, price, measure]
-    _list_to_view = [code, name, actual_price, actual_qty, measure]
+    # кэшируем записи, если это пришло с запроса
+    if from_request:
+        _list_to_cache = [code, name, price, measure]
+        prod_codes[code] = _list_to_cache
+        barcodes[barcode] = [code, ratio, qty]
 
-    # если код есть в мапке кодов продукта
-    if code in prod_codes.keys() and check_row_exist(liststore, code):
-        print(' --> modify row')
-        modify_liststore_row(code, liststore, command, actual_qty, actual_price)
-    else:
-        print(' --> Append list_to_view')
-        append_to_liststore(liststore, *_list_to_view)
+    # если в листсторе есть такой продукт, то обновляем его
+    # и возвращаем флаг модификации (true, false)
+    if check_row_exist(liststore, code):
+        return modify_liststore_row(code, liststore, command, actual_qty, actual_price)
+    # если в листсторе записи не оказалось и это операция добавления, то добавляем
+    # и возвращаем флаг модификации
+    elif command == 'ADD':
+        args = [code, name, actual_price, actual_qty, measure]
+        liststore.append(args)
+        return True
 
-    prod_codes[code] = _list_to_cache
-    # сохраняю инфу о таком баркоде
-    barcode_and_code[barcode] = [code, ratio, qty]
+    print('Nothing to remove')
+
+    return False
 
 
 def check_row_exist(liststore, code):
     return any(map(lambda x: x[0] == code, liststore))
-
-
-def append_to_liststore(liststore, *args):
-    liststore.append([*args])
 
 
 def exec_command(iter_path, liststore, command, row, qty, price):
@@ -121,25 +97,35 @@ def exec_command(iter_path, liststore, command, row, qty, price):
         row[2] += price
     elif command == 'REMOVE':
         if (row[3] - qty <= 0) or (row[2] - price <= 0):
-            print('its less than Zero! Delete Row! Now!')
             _iter = liststore.get_iter(iter_path)
             liststore.remove(_iter)
         else:
             row[3] -= qty
             row[2] -= price
+    return True
 
 
-def on_amount_changed(path, value, window):
-    liststore = window.liststore
-    prod_codes = window.prod_codes
-    p = prod_codes[liststore[path][0]]
-    p_price = p[2]
-    p_measure = p[4]
-    val = float(value)
-    if p_measure != 'кг':
-        val = int(float(value))
+def process_barcode(liststore, barcode, btn_active):
+    if btn_active:
+        command = 'REMOVE'
+    else:
+        command = 'ADD'
 
-    new_price = val * p_price
+    # проверяем наличие баркода в кэше
+    if check_in_main_list_of_barcodes_and_modify(barcode, command, liststore):
+        return
 
-    liststore[path][3] = val
-    liststore[path][2] = new_price
+    # не нужно никаких запросов при удалении из списка
+    if command == 'REMOVE':
+        return
+
+    # если добрались сюда, то делаем запрос
+    info = request_to_wareinfo(barcode)
+
+    if not info:
+        return
+
+    print(f'barcode_info: {barcode} - {info["code"]} - {info["measure"]} - {info["quantity"]}')
+
+    # обновляем листстор и кэш баркодов
+    process_success_request(info, barcode, command, liststore)
