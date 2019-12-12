@@ -4,6 +4,7 @@ from gi.repository import Gtk, Gdk
 
 from .functions import process_barcode
 from .constants import ALLOWED_KEYS
+from .models import AppliedBarcodes
 
 
 btn_text = {'add': 'Добавление', 'rm': 'Удаление'}
@@ -20,6 +21,8 @@ class MyWindow(Gtk.Window):
 
         self.accumulated_characters = []
         self.connect("key-press-event", self.on_key_pressed)
+
+        self.applied_barcodes = AppliedBarcodes()
 
         self.set_border_width(10)
         self.set_default_size(win_width, win_height)
