@@ -27,23 +27,33 @@ def request_to_wareinfo(barcode):
         return None
 
 
-def check_in_main_list_of_barcodes_and_modify(barcode, command, liststore):
+def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
+    kwargs = {'barcode': barcode, 'command': command, 'liststore': window.liststore, 'window': window}
+
     if barcode not in barcodes.keys():
-        return False
+        if command == ADD:
+            info = request_to_wareinfo(barcode)
+            print('barcode  > ', barcode)
+            if not info:
+                return
+
+            print(f'barcode_info: {barcode} - {info["code"]} - {info["measure"]} - {info["quantity"]}')
+
+            # обновляем листстор и кэш баркодов
+            process_success_request(info, **kwargs)
     else:
-        kwargs = {'barcode': barcode, 'command': command, 'liststore': liststore}
-        return _add_or_remove(info=None, from_request=False, **kwargs)
+        _add_or_remove(info=None, from_request=False, **kwargs)
 
 
-def modify_liststore_row(prod_code, liststore, command, actual_qty, actual_price):
+def modify_liststore_row(barcode, liststore, command, actual_qty, actual_price, **kwargs):
     for indx, row in enumerate(liststore):
-        if row[0] == prod_code:
-            return exec_command(indx, liststore, command, row, actual_qty, actual_price)
-    return False
+        if row[0] == barcode:
+            modify_row(indx, liststore, command, row, actual_qty, actual_price, barcode=barcode, **kwargs)
+            break
 
 
-def process_success_request(info, barcode, command, liststore):
-    kwargs = {'barcode': barcode, 'command': command, 'liststore': liststore}
+def process_success_request(info, **kwargs):
+    # kwargs = {'barcode': barcode, 'command': command, 'liststore': liststore}
     _add_or_remove(info, from_request=True, **kwargs)
 
 
@@ -51,6 +61,7 @@ def _add_or_remove(info, from_request, **kwargs):
     barcode = kwargs['barcode']
     liststore = kwargs['liststore']
     command = kwargs['command']
+    window = kwargs['window']
     if from_request:
         code = info['code']
         name = info['name']
@@ -77,36 +88,34 @@ def _add_or_remove(info, from_request, **kwargs):
 
     # если в листсторе есть такой продукт, то обновляем его
     # и возвращаем флаг модификации (true, false)
-    if check_row_exist(liststore, code):
-        return modify_liststore_row(code, liststore, command, actual_qty, actual_price)
+    if check_row_exist(liststore, barcode):
+        modify_liststore_row(barcode, liststore, command, actual_qty, actual_price, window=kwargs['window'])
     # если в листсторе записи не оказалось и это операция добавления, то добавляем
-    # и возвращаем флаг модификации
     elif command == ADD:
-        args = [code, name, actual_price, actual_qty, measure]
+        args = [barcode, code, name, actual_price, actual_qty, measure]
         liststore.append(args)
-        return True
-
-    print('Nothing to remove')
-
-    return False
+        window.applied_barcodes.add_barcode(barcode, actual_qty)
+    else:
+        print('Nothing to remove')
 
 
 def check_row_exist(liststore, code):
     return any(map(lambda x: x[0] == code, liststore))
 
 
-def exec_command(iter_path, liststore, command, row, qty, price):
+def modify_row(iter_path, liststore, command, row, qty, price, **kwargs):
     if command == ADD:
-        row[3] += qty
-        row[2] += price
+        row[4] += qty
+        row[3] += price
+        kwargs['window'].applied_barcodes.add_barcode(kwargs['barcode'], qty)
     elif command == RM:
-        if (row[3] - qty <= 0) or (row[2] - price <= 0):
+        if (row[4] - qty <= 0) or (row[3] - price <= 0):
             _iter = liststore.get_iter(iter_path)
             liststore.remove(_iter)
         else:
-            row[3] -= qty
-            row[2] -= price
-    return True
+            row[4] -= qty
+            row[3] -= price
+        kwargs['window'].applied_barcodes.remove_barcode(kwargs['barcode'], qty)
 
 
 def process_barcode(window, barcode, btn_active):
@@ -116,29 +125,8 @@ def process_barcode(window, barcode, btn_active):
         command = ADD
 
     # проверяем наличие баркода в кэше
-    if check_in_main_list_of_barcodes_and_modify(barcode, command, window.liststore):
-        recalc_total(window)
-        return
-
-    # не нужно никаких запросов при удалении из списка
-    if command == RM:
-        return
-
-    # если добрались сюда, то делаем запрос
-    info = request_to_wareinfo(barcode)
-    print('barcode  > ', barcode)
-    if not info:
-        return
-
-    print(f'barcode_info: {barcode} - {info["code"]} - {info["measure"]} - {info["quantity"]}')
-
-    # обновляем листстор и кэш баркодов
-    process_success_request(info, barcode, command, window.liststore)
+    check_in_main_list_of_barcodes_and_modify(barcode, command, window)
     recalc_total(window)
-
-
-def key_pressed(window, event):
-    pass
 
 
 def recalc_total(window):
@@ -146,7 +134,7 @@ def recalc_total(window):
     total_value_widget = window.total_value
     total = 0
     for row in liststore:
-        total += row[2]
+        total += row[3]
 
     total = round_half_down(total, 4)
     total_value_widget.set_label(str(total))

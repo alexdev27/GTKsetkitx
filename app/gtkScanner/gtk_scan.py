@@ -6,9 +6,10 @@ from .functions import process_barcode
 from .constants import ALLOWED_KEYS
 from .models import AppliedBarcodes
 
+from pprint import pprint as pp
 
 btn_text = {'add': 'Добавление', 'rm': 'Удаление'}
-headers = ['Код товара', 'Название', 'Цена', 'Количество', 'Тип']
+headers = ['Штрихкод товара', 'Код товара', 'Название', 'Цена', 'Количество', 'Тип']
 
 win_height = 600
 win_width = 1200
@@ -34,7 +35,7 @@ class MyWindow(Gtk.Window):
         # self.grid.set_row_homogeneous(True)
         self.add(self.grid)
 
-        self.liststore = Gtk.ListStore(str, str, float, float, str)
+        self.liststore = Gtk.ListStore(str, str, str, float, float, str)
 
         self.tree_view = Gtk.TreeView(model=self.liststore)
         self.tree_view.set_property('can-focus', False)
@@ -103,7 +104,8 @@ class MyWindow(Gtk.Window):
         process_barcode(self, barcode, self.switch_btn.get_active())
 
     def on_print_btn_clicked(self, widget):
-        print('hello')
+        pp('Applied barcodes !')
+        pp(self.applied_barcodes.get_list_from_applied_barcodes())
         pass
 
 
