@@ -1,6 +1,11 @@
+from functools import reduce
+
 import requests
 from config import WAREINFO_API_URL
 from .models import prod_codes, barcodes
+from .constants import RM, ADD
+from app.helpers import round_half_down
+
 
 
 def request_to_wareinfo(barcode):
@@ -77,7 +82,7 @@ def _add_or_remove(info, from_request, **kwargs):
         return modify_liststore_row(code, liststore, command, actual_qty, actual_price)
     # если в листсторе записи не оказалось и это операция добавления, то добавляем
     # и возвращаем флаг модификации
-    elif command == 'ADD':
+    elif command == ADD:
         args = [code, name, actual_price, actual_qty, measure]
         liststore.append(args)
         return True
@@ -92,10 +97,10 @@ def check_row_exist(liststore, code):
 
 
 def exec_command(iter_path, liststore, command, row, qty, price):
-    if command == 'ADD':
+    if command == ADD:
         row[3] += qty
         row[2] += price
-    elif command == 'REMOVE':
+    elif command == RM:
         if (row[3] - qty <= 0) or (row[2] - price <= 0):
             _iter = liststore.get_iter(iter_path)
             liststore.remove(_iter)
@@ -105,18 +110,19 @@ def exec_command(iter_path, liststore, command, row, qty, price):
     return True
 
 
-def process_barcode(liststore, barcode, btn_active):
+def process_barcode(window, barcode, btn_active):
     if btn_active:
-        command = 'REMOVE'
+        command = RM
     else:
-        command = 'ADD'
+        command = ADD
 
     # проверяем наличие баркода в кэше
-    if check_in_main_list_of_barcodes_and_modify(barcode, command, liststore):
+    if check_in_main_list_of_barcodes_and_modify(barcode, command, window.liststore):
+        recalc_total(window)
         return
 
     # не нужно никаких запросов при удалении из списка
-    if command == 'REMOVE':
+    if command == RM:
         return
 
     # если добрались сюда, то делаем запрос
@@ -128,4 +134,20 @@ def process_barcode(liststore, barcode, btn_active):
     print(f'barcode_info: {barcode} - {info["code"]} - {info["measure"]} - {info["quantity"]}')
 
     # обновляем листстор и кэш баркодов
-    process_success_request(info, barcode, command, liststore)
+    process_success_request(info, barcode, command, window.liststore)
+    recalc_total(window)
+
+
+def key_pressed(window, event):
+    pass
+
+
+def recalc_total(window):
+    liststore = window.liststore
+    total_value_widget = window.total_value
+    total = 0
+    for row in liststore:
+        total += row[2]
+
+    total = round_half_down(total, 4)
+    total_value_widget.set_label(str(total))

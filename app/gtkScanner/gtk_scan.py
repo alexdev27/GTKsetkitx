@@ -3,6 +3,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 
 from .functions import process_barcode
+from .constants import ALLOWED_KEYS
 
 
 btn_text = {'add': 'К добавлению', 'rm': 'К удалению'}
@@ -11,6 +12,8 @@ headers = ['Код товара', 'Название', 'Цена', 'Количе�
 win_height = 600
 win_width = 1200
 
+
+allowed_keys_and_codes = {}
 
 class MyWindow(Gtk.Window):
 
@@ -37,7 +40,8 @@ class MyWindow(Gtk.Window):
 
         for i, header in enumerate(headers):
             if header == 'Количество':
-                renderer_spin = Gtk.CellRendererSpin(editable=True)
+                renderer_spin = Gtk.CellRendererSpin()
+                # renderer_spin.connect('edited', )
                 self.tree_view.append_column(Gtk.TreeViewColumn(header, renderer_spin, text=i))
                 continue
             self.tree_view.append_column(Gtk.TreeViewColumn(header, Gtk.CellRendererText(), text=i))
@@ -55,10 +59,21 @@ class MyWindow(Gtk.Window):
         myform.pack_start(box, True, True, 0)
         self.grid.attach(myform, 0, 0, 1, 1)
 
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, margin_top=15)
+        self.total_label = Gtk.Label('Всего: ', xalign=Gtk.Justification.LEFT)
+        self.total_value = Gtk.Label('0', xalign=Gtk.Justification.LEFT)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin_top=15)
         box.pack_start(self.tree_view, True, True, 0)
         scrolled_win.add(box)
         self.grid.attach(scrolled_win, 0, 2, 1, 1)
+
+        # box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin_top=15)
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, margin_top=15, margin_bottom=5)
+        # _box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        box.pack_start(self.total_label, False, False, 0)
+        box.pack_start(self.total_value, False, False, 0)
+        # box.pack_start(_box, True, True, 0)
+        self.grid.attach(box, 0, 3, 1, 1)
 
     def btn_is_toggled(self, widget):
         print('button active? ' + str(self.switch_btn.get_active()))
@@ -69,14 +84,17 @@ class MyWindow(Gtk.Window):
             widget.set_label(btn_text['add'])
 
     def on_key_pressed(self, widget, event):
+        key_code = event.keyval
+        key_value = ALLOWED_KEYS.get(key_code)
         keyval = Gdk.keyval_name(event.keyval)
-        if keyval != 'Return':
+
+        if keyval != 'Return' and key_value:
             self.accumulated_characters.append(keyval)
             return
 
         barcode = ''.join(self.accumulated_characters)
         self.accumulated_characters = []
-        process_barcode(self.liststore, barcode, self.switch_btn.get_active())
+        process_barcode(self, barcode, self.switch_btn.get_active())
 
 
 def launch():
