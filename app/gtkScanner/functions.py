@@ -7,7 +7,6 @@ from .constants import RM, ADD
 from app.helpers import round_half_down
 
 
-
 def request_to_wareinfo(barcode):
     timeouts = 4
 
@@ -127,7 +126,7 @@ def process_barcode(window, barcode, btn_active):
 
     # если добрались сюда, то делаем запрос
     info = request_to_wareinfo(barcode)
-
+    print('barcode  > ', barcode)
     if not info:
         return
 
