@@ -41,3 +41,9 @@ class AppliedBarcodes:
 
     def get_list_from_applied_barcodes(self):
         return [{k: v} for k, v in self.applied_barcodes_map.items()]
+
+    def get_ready_for_setkitx(self):
+        _list = []
+        for k, v in self.applied_barcodes_map.items():
+            _list.append({'barcode': k, 'quantity': v})
+        return _list

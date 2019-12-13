@@ -6,6 +6,8 @@ from .functions import process_barcode
 from .constants import ALLOWED_KEYS
 from .models import AppliedBarcodes
 
+from app.setkitX.functions import send_to_setkitx
+
 from pprint import pprint as pp
 
 btn_text = {'add': 'Добавление', 'rm': 'Удаление'}
@@ -105,8 +107,9 @@ class MyWindow(Gtk.Window):
 
     def on_print_btn_clicked(self, widget):
         pp('Applied barcodes !')
-        pp(self.applied_barcodes.get_list_from_applied_barcodes())
-        pass
+        data = self.applied_barcodes.get_ready_for_setkitx()
+        send_to_setkitx(data)
+        # pass
 
 
 def launch():
