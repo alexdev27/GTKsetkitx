@@ -37,7 +37,8 @@ def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
             if not info:
                 return
 
-            print(f'barcode_info: {barcode} - {info["code"]} - {info["measure"]} - {info["quantity"]}')
+            print('barcode_info: {0} - {1} - {2} - {3}'
+                  .format(barcode, info['code'], info['measure'], info['quantity']))
 
             # обновляем листстор и кэш баркодов
             process_success_request(info, **kwargs)
