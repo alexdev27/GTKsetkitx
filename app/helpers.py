@@ -2,6 +2,9 @@ import math
 from functools import wraps
 import requests
 
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 
 def round_half_up(n, decimals=0):
     multiplier = 10 ** decimals
@@ -26,4 +29,19 @@ def handle_request():
     return wrapper
 
 
-# def handle_request():
+def show_gtk_error_modal(parent_window, message):
+    dialog = Gtk.MessageDialog(
+        parent_window, 0, Gtk.MessageType.ERROR,
+        Gtk.ButtonsType.OK, "Возникла ошибка!"
+    )
+    dialog.format_secondary_text(message)
+    dialog.run()
+
+    dialog.destroy()
+
+def show_popover_spinner():
+    pass
+
+
+def make_error(msg):
+    return {'error': True, 'message': msg}

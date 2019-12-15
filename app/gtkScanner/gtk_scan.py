@@ -1,6 +1,7 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
+from time import sleep
 
 from .functions import process_barcode
 from .constants import ALLOWED_KEYS
@@ -42,12 +43,20 @@ class MyWindow(Gtk.Window):
         self.tree_view = Gtk.TreeView(model=self.liststore)
         self.tree_view.set_property('can-focus', False)
 
+        self.popover = Gtk.Popover.new(self.tree_view)
+        self.popover.set_modal(True)
+        self.popover.set_position(Gtk.PositionType.BOTTOM)
+        self.spinner = Gtk.Spinner()
+        self.popover.add(self.spinner)
+
+
+
         for i, header in enumerate(headers):
-            if header == 'Количество':
-                renderer_spin = Gtk.CellRendererSpin()
-                # renderer_spin.connect('edited', )
-                self.tree_view.append_column(Gtk.TreeViewColumn(header, renderer_spin, text=i))
-                continue
+            # if header == 'Количество':
+            #     renderer_spin = Gtk.CellRendererSpin()
+            #     # renderer_spin.connect('edited', )
+            #     self.tree_view.append_column(Gtk.TreeViewColumn(header, renderer_spin, text=i))
+            #     continue
             self.tree_view.append_column(Gtk.TreeViewColumn(header, Gtk.CellRendererText(), text=i))
 
         myform = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
@@ -103,9 +112,22 @@ class MyWindow(Gtk.Window):
         self.accumulated_characters = []
         if not barcode:
             return
+        self.show_spinner()
         process_barcode(self, barcode, self.switch_btn.get_active())
+        self.hide_spinner()
+
+    def show_spinner(self):
+        self.popover.popup()
+        self.spinner.show()
+        self.spinner.start()
+
+    def hide_spinner(self):
+        self.popover.popdown()
+        self.spinner.stop()
 
     def on_print_btn_clicked(self, widget):
+
+        return
         pp('Applied barcodes !')
         data = self.applied_barcodes.get_ready_for_setkitx()
         send_to_setkitx(data)

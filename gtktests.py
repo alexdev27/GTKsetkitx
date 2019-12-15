@@ -1,67 +1,78 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
-from gi.repository import Gdk
 
-class MyWindow(Gtk.Window):
-
-    key = Gdk.KEY_h
+class MessageDialogWindow(Gtk.Window):
 
     def __init__(self):
-        # init the base class (Gtk.Window)
-        super().__init__()
+        Gtk.Window.__init__(self, title="MessageDialog Example")
 
-        self.set_default_size(400, 400)
-        # state affected by shortcuts
-        self.shortcut_hits = 0
-
-        # Tell Gtk what to do when the window is closed (in this case quit the main loop)
-        self.connect("delete-event", Gtk.main_quit)
-
-        # connect the key-press event - this will call the keypress
-        # handler when any key is pressed
-        self.connect("key-press-event", self.on_key_press_event)
-
-        # Window content goes in a vertical box
-        box = Gtk.VBox()
-
-        # mapping between Gdk.KEY_h and a string
-        keyname = Gdk.keyval_name(self.key)
-
-        # a helpful label
-        instruct = Gtk.Label(label="Press Ctrl+%s" % keyname)
-        box.add(instruct)
-
-        # the label that will respond to the event
-        self.label = Gtk.Label(label="")
-        self.update_label_text()
-
-        # Add the label to the window
-        box.add(self.label)
-
+        box = Gtk.Box(spacing=6)
         self.add(box)
 
-    def on_key_press_event(self, widget, event):
+        button1 = Gtk.Button("Information")
+        button1.connect("clicked", self.on_info_clicked)
+        box.add(button1)
 
-        print("Key press on widget: ", widget)
-        print("          Modifiers: ", event.state)
-        print("      Key val, name: ", event.keyval, Gdk.keyval_name(event.keyval))
+        button2 = Gtk.Button("Error")
+        button2.connect("clicked", self.on_error_clicked)
+        box.add(button2)
 
-        # check the event modifiers (can also use SHIFTMASK, etc)
-        ctrl = (event.state & Gdk.ModifierType.CONTROL_MASK)
+        button3 = Gtk.Button("Warning")
+        button3.connect("clicked", self.on_warn_clicked)
+        box.add(button3)
 
-        # see if we recognise a keypress
-        if ctrl and event.keyval == Gdk.KEY_h:
-            self.shortcut_hits += 1
-            self.update_label_text()
+        button4 = Gtk.Button("Question")
+        button4.connect("clicked", self.on_question_clicked)
+        box.add(button4)
 
-    def update_label_text(self):
-        # Update the label based on the state of the hit variable
-        self.label.set_text("Shortcut pressed %d times" % self.shortcut_hits)
+    def on_info_clicked(self, widget):
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO,
+            Gtk.ButtonsType.OK, "This is an INFO MessageDialog")
+        dialog.format_secondary_text(
+            "And this is the secondary text that explains things.")
+        dialog.run()
+        print("INFO dialog closed")
 
-if __name__ == "__main__":
-    win = MyWindow()
-    win.show_all()
+        dialog.destroy()
 
-    # Start the Gtk main loop
-    Gtk.main()
+    def on_error_clicked(self, widget):
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR,
+            Gtk.ButtonsType.CANCEL, "This is an ERROR MessageDialog")
+        dialog.format_secondary_text(
+            "And this is the secondary text that explains things.")
+        dialog.run()
+        print("ERROR dialog closed")
+
+        dialog.destroy()
+
+    def on_warn_clicked(self, widget):
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.WARNING,
+            Gtk.ButtonsType.OK_CANCEL, "This is an WARNING MessageDialog")
+        dialog.format_secondary_text(
+            "And this is the secondary text that explains things.")
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            print("WARN dialog closed by clicking OK button")
+        elif response == Gtk.ResponseType.CANCEL:
+            print("WARN dialog closed by clicking CANCEL button")
+
+        dialog.destroy()
+
+    def on_question_clicked(self, widget):
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
+            Gtk.ButtonsType.YES_NO, "This is an QUESTION MessageDialog")
+        dialog.format_secondary_text(
+            "And this is the secondary text that explains things.")
+        response = dialog.run()
+        if response == Gtk.ResponseType.YES:
+            print("QUESTION dialog closed by clicking YES button")
+        elif response == Gtk.ResponseType.NO:
+            print("QUESTION dialog closed by clicking NO button")
+
+        dialog.destroy()
+
+win = MessageDialogWindow()
+win.connect("destroy", Gtk.main_quit)
+win.show_all()
+Gtk.main()

@@ -6,17 +6,19 @@ import tempfile
 import os
 from io import BytesIO
 from config import SOFTCHEQUE_URL, PRINT_COMMAND, SOFTCHEQUE_PRINTER
+from app.helpers import make_error, show_gtk_error_modal
 
 
-def send_to_setkitx(data):
+def send_to_setkitx(data, **kwargs):
     if not data:
         print('Empty data!')
         return
     print('data to send ', data)
-    _post_to_setkitx(data)
+    _post_to_setkitx(data, **kwargs)
 
 
-def _post_to_setkitx(data):
+def _post_to_setkitx(data, **kwargs):
+    window = kwargs['window']
     timeouts = 4
     try:
         res = requests.post(url=SOFTCHEQUE_URL, json={'wares': data}, timeout=timeouts)
@@ -59,11 +61,11 @@ def make_barcode_image(guid):
            <div>
                <img style="inline" src='data:image/png;base64,{0}' />
            </div>
-           <hr/>
        </body>
     """.format(base64.b64encode(imgTemp.getvalue()).decode())
-    pdfkit.from_string(sourceHtml, pdf_file.name, options=options)
-    _send_barcodeimage_to_printer(pdf_file)
+    pdfkit.from_string(sourceHtml, 'app/testpdf.pdf', options=options)
+    # pdfkit.from_string(sourceHtml, pdf_file.name, options=options)
+    # _send_barcodeimage_to_printer(pdf_file)
 
 
 def _send_barcodeimage_to_printer(pdf_file):

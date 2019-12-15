@@ -1,10 +1,9 @@
-from functools import reduce
 
 import requests
 from config import WAREINFO_API_URL
 from .models import prod_codes, barcodes
 from .constants import RM, ADD
-from app.helpers import round_half_down
+from app.helpers import round_half_down, make_error, show_gtk_error_modal
 
 
 def request_to_wareinfo(barcode):
@@ -13,18 +12,20 @@ def request_to_wareinfo(barcode):
     try:
         res = requests.get(WAREINFO_API_URL + barcode, timeout=timeouts)
         if res.status_code >= 400:
-            print(' ---> Ошибка запроса. Код ошибки: ' + str(res.status_code))
-            return None
+            msg = 'Сервер информации о товаре вернул код ошибки: ' + str(res.status_code)
+            print(' ---> ' + msg)
+            return make_error(msg)
 
         res = res.json()
         if res.get('error'):
-            print(' ---> Ошибка с сервиса API: ' + str(res['message']))
-            return None
-
+            msg = 'После обработки запроса сервер информации о товаре вернул ошибку: ' + str(res['message'])
+            print(' ---> ' + msg)
+            return make_error(msg)
         return res
     except requests.RequestException as e:
-        print(' ---> Request Exception: ' + str(e))
-        return None
+        msg = 'Возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
+        print(' ---> ' + msg)
+        return make_error(msg)
 
 
 def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
@@ -34,7 +35,8 @@ def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
         if command == ADD:
             info = request_to_wareinfo(barcode)
             print('barcode  > ', barcode)
-            if not info:
+            if info.get('error'):
+                show_gtk_error_modal(window, info['message'])
                 return
 
             print('barcode_info: {0} - {1} - {2} - {3}'
