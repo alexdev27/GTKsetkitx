@@ -117,20 +117,18 @@ class MyWindow(Gtk.Window):
         self.hide_spinner()
 
     def show_spinner(self):
-        self.popover.popup()
+        self.popover.show()
         self.spinner.show()
         self.spinner.start()
 
     def hide_spinner(self):
-        self.popover.popdown()
+        self.popover.hide()
         self.spinner.stop()
 
     def on_print_btn_clicked(self, widget):
-
-        return
-        pp('Applied barcodes !')
+        print('Applied barcodes !')
         data = self.applied_barcodes.get_ready_for_setkitx()
-        send_to_setkitx(data)
+        send_to_setkitx(data, self)
         # pass
 
 

@@ -9,35 +9,52 @@ from config import SOFTCHEQUE_URL, PRINT_COMMAND, SOFTCHEQUE_PRINTER
 from app.helpers import make_error, show_gtk_error_modal
 
 
-def send_to_setkitx(data, **kwargs):
+def send_to_setkitx(data, window):
     if not data:
         print('Empty data!')
         return
     print('data to send ', data)
-    _post_to_setkitx(data, **kwargs)
+
+    # window = kwargs['window']
+
+    res = _post_to_setkitx(data)
+    if res.get('error'):
+        show_gtk_error_modal(window, res['message'])
+        return
+
+    make_barcode_image(res['result']['guid'])
 
 
-def _post_to_setkitx(data, **kwargs):
-    window = kwargs['window']
+
+def _post_to_setkitx(data):
     timeouts = 4
     try:
         res = requests.post(url=SOFTCHEQUE_URL, json={'wares': data}, timeout=timeouts)
 
         if res.status_code >= 400:
-            print('С API вернулся код статуса ' + str(res.status_code))
+            msg = str(res.url) + ' вернулся код статуса: ' + str(res.status_code)
+            print(msg)
+            return make_error(msg)
 
         res = res.json()
 
+        print('setkitx response -> ')
+        print(res)
         if res.get('error'):
-            print('Вернулась Ошибка с Setkitx API: ' + str(res['message']))
-            return
+            msg = str(res.url) + ' Вернулась Ошибка с Setkitx API: ' + str(res['message'])
+            print(msg)
+            return make_error(msg)
 
-        guid = res['result']['guid']
-        print('GUID --> ' + str(guid))
-        make_barcode_image(guid)
+        return res
 
-    except requests.RequestException as exc:
-        print('SetkitX API Request exception! ' + str(exc))
+        # guid = res['result']['guid']
+        # print('GUID --> ' + str(guid))
+        # make_barcode_image(guid)
+
+    except requests.RequestException as e:
+        msg = 'Возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
+        print(msg)
+        return make_error(msg)
 
 
 def make_barcode_image(guid):
@@ -64,8 +81,8 @@ def make_barcode_image(guid):
        </body>
     """.format(base64.b64encode(imgTemp.getvalue()).decode())
     pdfkit.from_string(sourceHtml, 'app/testpdf.pdf', options=options)
-    # pdfkit.from_string(sourceHtml, pdf_file.name, options=options)
-    # _send_barcodeimage_to_printer(pdf_file)
+    pdfkit.from_string(sourceHtml, pdf_file.name, options=options)
+    _send_barcodeimage_to_printer(pdf_file)
 
 
 def _send_barcodeimage_to_printer(pdf_file):

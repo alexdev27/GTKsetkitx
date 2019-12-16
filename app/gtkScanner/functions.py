@@ -33,6 +33,7 @@ def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
 
     if barcode not in barcodes.keys():
         if command == ADD:
+            window.show_spinner()
             info = request_to_wareinfo(barcode)
             print('barcode  > ', barcode)
             if info.get('error'):
