@@ -6,6 +6,7 @@ import tempfile
 import os
 from io import BytesIO
 from config import SOFTCHEQUE_URL, PRINT_COMMAND, SOFTCHEQUE_PRINTER
+from app.zpl_printing.functions import send_to_print
 from app.helpers import make_error, show_gtk_error_modal
 
 
@@ -22,8 +23,11 @@ def send_to_setkitx(data, window):
         show_gtk_error_modal(window, res['message'])
         return
 
-    make_barcode_image(res['result']['guid'])
+    # создание на принтер мягких чеков
+    #make_barcode_image(res['result']['guid'])
 
+    # отправить на зебру по сокету
+    send_to_print(res['result']['guid'])
 
 
 def _post_to_setkitx(data):
@@ -38,8 +42,6 @@ def _post_to_setkitx(data):
 
         res = res.json()
 
-        print('setkitx response -> ')
-        print(res)
         if res.get('error'):
             msg = str(res.url) + ' Вернулась Ошибка с Setkitx API: ' + str(res['message'])
             print(msg)
