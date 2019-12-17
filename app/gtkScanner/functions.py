@@ -142,3 +142,11 @@ def recalc_total(window):
 
     total = round_half_down(total, 4)
     total_value_widget.set_label(str(total))
+
+def show_settings(window):
+    # dialog = Gtk.MessageDialog(parent_window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, "Возникла ошибка!")
+    # dialog.format_secondary_text(message)
+    # dialog.run()
+
+    # dialog.destroy()
+    pass

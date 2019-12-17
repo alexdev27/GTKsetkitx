@@ -17,6 +17,7 @@ headers = ['Штрихкод товара', 'Код товара', 'Назван
 win_height = 600
 win_width = 1200
 
+from .settings_screen import SettingsScreen
 
 class MyWindow(Gtk.Window):
 
@@ -49,25 +50,24 @@ class MyWindow(Gtk.Window):
         self.spinner = Gtk.Spinner()
         self.popover.add(self.spinner)
 
-
-
         for i, header in enumerate(headers):
-            # if header == 'Количество':
-            #     renderer_spin = Gtk.CellRendererSpin()
-            #     # renderer_spin.connect('edited', )
-            #     self.tree_view.append_column(Gtk.TreeViewColumn(header, renderer_spin, text=i))
-            #     continue
             self.tree_view.append_column(Gtk.TreeViewColumn(header, Gtk.CellRendererText(), text=i))
 
         myform = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
 
 
-        # Контрол
+        # Контролы
         box = Gtk.Box()
-        self.switch_btn = Gtk.ToggleButton(label=btn_text['add'])
+        self.switch_btn = Gtk.ToggleButton(label=btn_text['add'])  # кнопка переключения режима
         self.switch_btn.set_property('can-focus', False)
         self.switch_btn.connect('toggled', self.btn_is_toggled)
+
+        self.settings_btn = Gtk.Button(label='Настройки', margin_left=10)  # кнопка показа настроек
+        self.settings_btn.set_property('can-focus', False)
+        self.settings_btn.connect('clicked', self.on_settings_clicked)
+
         box.pack_start(self.switch_btn, True, True, 0)
+        box.pack_end(self.settings_btn, False, False, 0)
 
         myform.pack_start(box, True, True, 0)
         self.grid.attach(myform, 0, 0, 1, 1)
@@ -129,6 +129,26 @@ class MyWindow(Gtk.Window):
         print('Applied barcodes !')
         data = self.applied_barcodes.get_ready_for_setkitx()
         send_to_setkitx(data, self)
+
+    def on_settings_clicked(self, widget):
+        # dialog = SettingsScreen(parent=self)
+        dialog = Gtk.Dialog(parent=self)
+        content_area = dialog.get_content_area()
+        # entry
+        print(content_area)
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        # _box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        # entry = Gtk.Entry()
+        # _box.pack_start(entry, True, True, 0)
+        # _box.pack_start(Gtk.Entry(), True, True, 0)
+        # # entry.set_property('placeholder', 'Ebash')
+        # content_box.pack_start(_box, False, False, 0)
+        content_area.pack_start(content_box, False, False, 0)
+        dialog.show_all()
+
+        dialog.run()
+        dialog.destroy()
+        pass
 
 
 def launch():

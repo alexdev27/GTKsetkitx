@@ -27,7 +27,7 @@ def send_to_setkitx(data, window):
     #make_barcode_image(res['result']['guid'])
 
     # отправить на зебру по сокету
-    send_to_print(res['result']['guid'])
+    # send_to_print(res['result']['guid'])
 
 
 def _post_to_setkitx(data):
