@@ -129,7 +129,6 @@ class MyWindow(Gtk.Window):
         print('Applied barcodes !')
         data = self.applied_barcodes.get_ready_for_setkitx()
         send_to_setkitx(data, self)
-        # pass
 
 
 def launch():
