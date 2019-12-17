@@ -1,15 +1,14 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
-from time import sleep
 
 from .functions import process_barcode
 from .constants import ALLOWED_KEYS
 from .models import AppliedBarcodes
 
+from .settings_screen import SettingsScreen
 from app.setkitX.functions import send_to_setkitx
 
-from pprint import pprint as pp
 
 btn_text = {'add': 'Добавление', 'rm': 'Удаление'}
 headers = ['Штрихкод товара', 'Код товара', 'Название', 'Цена', 'Количество', 'Тип']
@@ -17,7 +16,7 @@ headers = ['Штрихкод товара', 'Код товара', 'Назван
 win_height = 600
 win_width = 1200
 
-from .settings_screen import SettingsScreen
+
 
 class MyWindow(Gtk.Window):
 
@@ -131,24 +130,7 @@ class MyWindow(Gtk.Window):
         send_to_setkitx(data, self)
 
     def on_settings_clicked(self, widget):
-        # dialog = SettingsScreen(parent=self)
-        dialog = Gtk.Dialog(parent=self)
-        content_area = dialog.get_content_area()
-        # entry
-        print(content_area)
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        # _box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        # entry = Gtk.Entry()
-        # _box.pack_start(entry, True, True, 0)
-        # _box.pack_start(Gtk.Entry(), True, True, 0)
-        # # entry.set_property('placeholder', 'Ebash')
-        # content_box.pack_start(_box, False, False, 0)
-        content_area.pack_start(content_box, False, False, 0)
-        dialog.show_all()
-
-        dialog.run()
-        dialog.destroy()
-        pass
+        SettingsScreen(parent_window=self).show_settings()
 
 
 def launch():
