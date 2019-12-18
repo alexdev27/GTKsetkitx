@@ -5,7 +5,7 @@ import base64
 import tempfile
 import os
 from io import BytesIO
-from config import SOFTCHEQUE_URL, PRINT_COMMAND, SOFTCHEQUE_PRINTER
+from config import PRINT_COMMAND
 from app.zpl_printing.functions import send_to_print
 from app.helpers import make_error, show_gtk_error_modal
 
@@ -14,36 +14,43 @@ def send_to_setkitx(data, window):
     if not data:
         print('Empty data!')
         return
-    print('data to send ', data)
-
-    # window = kwargs['window']
+    # print('data to send ', data)
 
     res = _post_to_setkitx(data)
     if res.get('error'):
         show_gtk_error_modal(window, res['message'])
         return
 
+    sys_print = bool(int(os.environ['SYS_ENABLE']))
+    sock_print = bool(int(os.environ['SOCK_ENABLE']))
     # создание на принтер мягких чеков
-    #make_barcode_image(res['result']['guid'])
+    if sys_print:
+        print('Выбран системный принтер')
+        make_barcode_image(res['result']['guid'])
+        pass
 
     # отправить на зебру по сокету
-    # send_to_print(res['result']['guid'])
+    if sock_print:
+        print('Выбран принтер для отправки по сокету')
+        send_to_print(res['result']['guid'])
+        pass
 
 
 def _post_to_setkitx(data):
     timeouts = 4
+    url = os.environ['SOFTCHEQUE_URL']
     try:
-        res = requests.post(url=SOFTCHEQUE_URL, json={'wares': data}, timeout=timeouts)
+        res = requests.post(url=url, json={'wares': data}, timeout=timeouts)
 
         if res.status_code >= 400:
-            msg = str(res.url) + ' вернулся код статуса: ' + str(res.status_code)
+            msg = url + ' Ошибка. Вернулся код статуса: ' + str(res.status_code)
             print(msg)
             return make_error(msg)
 
         res = res.json()
 
         if res.get('error'):
-            msg = str(res.url) + ' Вернулась Ошибка с Setkitx API: ' + str(res['message'])
+            msg = url + ' Вернулась Ошибка с Setkitx API: ' + str(res['message'])
             print(msg)
             return make_error(msg)
 
@@ -54,7 +61,8 @@ def _post_to_setkitx(data):
         # make_barcode_image(guid)
 
     except requests.RequestException as e:
-        msg = 'Возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
+        msg = url + ' При попытке запроса в сервис генерации мягких чеков ' \
+              'возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
         print(msg)
         return make_error(msg)
 
@@ -88,4 +96,5 @@ def make_barcode_image(guid):
 
 
 def _send_barcodeimage_to_printer(pdf_file):
-    os.system('{0} {1} {2}'.format(PRINT_COMMAND, SOFTCHEQUE_PRINTER, pdf_file.name))
+    printer = os.environ['SYS_PRINTER_NAME']
+    os.system('{0} {1} {2}'.format(PRINT_COMMAND, printer, pdf_file.name))
