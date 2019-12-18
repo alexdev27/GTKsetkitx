@@ -1,6 +1,7 @@
 
 import requests
-from config import WAREINFO_API_URL
+# from config import WAREINFO_API_URL
+from os import environ as envs
 from .models import prod_codes, barcodes
 from .constants import RM, ADD
 from app.helpers import round_half_down, make_error, show_gtk_error_modal
@@ -8,22 +9,23 @@ from app.helpers import round_half_down, make_error, show_gtk_error_modal
 
 def request_to_wareinfo(barcode):
     timeouts = 4
-
+    url = envs['WAREINFO_API_URL']
     try:
-        res = requests.get(WAREINFO_API_URL + barcode, timeout=timeouts)
+        res = requests.get(url + barcode, timeout=timeouts)
         if res.status_code >= 400:
-            msg = 'Сервер информации о товаре вернул код ошибки: ' + str(res.status_code)
+            msg = url + ' Сервер информации о товаре вернул код ошибки: ' + str(res.status_code)
             print(' ---> ' + msg)
             return make_error(msg)
 
         res = res.json()
         if res.get('error'):
-            msg = 'После обработки запроса сервер информации о товаре вернул ошибку: ' + str(res['message'])
+            msg = url + ' После обработки запроса сервер информации о товаре вернул ошибку: ' + str(res['message'])
             print(' ---> ' + msg)
             return make_error(msg)
         return res
     except requests.RequestException as e:
-        msg = 'Возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
+        msg = url + ' При попытке запроса в сервис информации о товаре ' \
+              'возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
         print(' ---> ' + msg)
         return make_error(msg)
 
@@ -142,11 +144,3 @@ def recalc_total(window):
 
     total = round_half_down(total, 4)
     total_value_widget.set_label(str(total))
-
-def show_settings(window):
-    # dialog = Gtk.MessageDialog(parent_window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, "Возникла ошибка!")
-    # dialog.format_secondary_text(message)
-    # dialog.run()
-
-    # dialog.destroy()
-    pass
