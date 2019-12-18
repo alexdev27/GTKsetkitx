@@ -1,4 +1,5 @@
 import socket
+from os import environ as envs
 from .models import ZPLLabel
 
 
@@ -8,7 +9,9 @@ def send_to_print(str_to_print):
 
 def _send_to_print(zpl_str):
     sock = socket.socket()
-    sock.connect(('10.21.8.33', 6101))
+    ip = envs['SOCK_PRINTER_IP']
+    port = int(envs['SOCK_PRINTER_PORT'])
+    sock.connect((ip, port))
     cmd = bytes(zpl_str.encode('utf8'))
     sock.send(cmd)
     sock.close()
