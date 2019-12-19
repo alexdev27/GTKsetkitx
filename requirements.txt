@@ -3,15 +3,12 @@ certifi==2019.11.28
 chardet==3.0.4
 code128==0.3
 idna==2.8
-keyboard==0.13.4
 pdfkit==0.6.1
 Pillow==6.2.1
 pycairo==1.18.2
 PyGObject==3.34.0
 PyGObject-stubs==0.0.2
-PyInstaller==4.0.dev0+9dd34bdfba
-pynput==1.5.0
-python-dotenv==0.10.3
+https://github.com/pyinstaller/pyinstaller/archive/develop.zip
 python-xlib==0.25
 requests==2.22.0
 six==1.13.0
