@@ -1,6 +1,5 @@
 
 import requests
-# from config import WAREINFO_API_URL
 from os import environ as envs
 from .models import prod_codes, barcodes
 from .constants import RM, ADD
@@ -14,19 +13,16 @@ def request_to_wareinfo(barcode):
         res = requests.get(url + barcode, timeout=timeouts)
         if res.status_code >= 400:
             msg = url + ' Сервер информации о товаре вернул код ошибки: ' + str(res.status_code)
-            print(' ---> ' + msg)
             return make_error(msg)
 
         res = res.json()
         if res.get('error'):
             msg = url + ' После обработки запроса сервер информации о товаре вернул ошибку: ' + str(res['message'])
-            print(' ---> ' + msg)
             return make_error(msg)
         return res
     except requests.RequestException as e:
         msg = url + ' При попытке запроса в сервис информации о товаре ' \
               'возникло исключение requests.RequestException: ' + str(e.__class__.__name__)
-        print(' ---> ' + msg)
         return make_error(msg)
 
 
@@ -37,13 +33,9 @@ def check_in_main_list_of_barcodes_and_modify(barcode, command, window):
         if command == ADD:
             window.show_spinner()
             info = request_to_wareinfo(barcode)
-            print('barcode  > ', barcode)
             if info.get('error'):
                 show_gtk_error_modal(window, info['message'])
                 return
-
-            print('barcode_info: {0} - {1} - {2} - {3}'
-                  .format(barcode, info['code'], info['measure'], info['quantity']))
 
             # обновляем листстор и кэш баркодов
             process_success_request(info, **kwargs)
@@ -97,12 +89,13 @@ def _add_or_remove(info, from_request, **kwargs):
     if check_row_exist(liststore, barcode):
         modify_liststore_row(barcode, liststore, command, actual_qty, actual_price, window=kwargs['window'])
     # если в листсторе записи не оказалось и это операция добавления, то добавляем
-    elif command == ADD:
-        args = [barcode, code, name, actual_price, actual_qty, measure]
-        liststore.append(args)
-        window.applied_barcodes.add_barcode(barcode, actual_qty)
     else:
-        print('Nothing to remove')
+        if command == ADD:
+            args = [barcode, code, name, actual_price, actual_qty, measure]
+            liststore.append(args)
+            window.applied_barcodes.add_barcode(barcode, actual_qty)
+    # else:
+    #     print('Nothing to remove')
 
 
 def check_row_exist(liststore, code):

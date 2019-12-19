@@ -1,7 +1,9 @@
 from os import environ as envs
+from sys import exit
 import json
 from app.helpers import make_error, show_gtk_error_modal
-from config import SETTINGS_FILENAME
+from config import SETTINGS_FILE
+from copy import deepcopy
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -10,6 +12,16 @@ from gi.repository import Gtk
 
 YES = 1
 NO = 0
+
+settings_structure = {
+    'WAREINFO_API_URL': '',
+    'SOFTCHEQUE_URL': '',
+    'SYS_ENABLE': 1,
+    'SYS_PRINTER_NAME': '',
+    'SOCK_ENABLE': 0,
+    'SOCK_PRINTER_IP': '',
+    'SOCK_PRINTER_PORT': ''
+}
 
 
 class SettingsScreen(Gtk.Dialog):
@@ -71,16 +83,28 @@ class SettingsScreen(Gtk.Dialog):
 
         content_area.pack_start(content_box, False, False, 0)
 
-    def on_checked_radio(self, widget, param):
-        print(widget.get_label(), widget.get_active(), param)
-        if param == 'sys' and widget.get_active():
-            self.toggle_printer(self.sys_printer, True)
-            self.toggle_printer(self.socket_printer, False)
-        elif param == 'sock' and widget.get_active():
-            self.toggle_printer(self.sys_printer, False)
-            self.toggle_printer(self.socket_printer, True)
+    def on_save_clicked(self, widget):
+        info = self._validate_incoming_settings()
 
-    def toggle_printer(self, entry_field, active):
+        if info.get('error'):
+            show_gtk_error_modal(self, info['message'])
+            return
+
+        settings = self._prepare_to_save()
+
+        error = SettingsScreen._try_save(self, settings)
+        if not error:
+            self.response(Gtk.ResponseType.CLOSE)
+
+    def on_checked_radio(self, widget, param):
+        if param == 'sys' and widget.get_active():
+            self._toggle_printer(self.sys_printer, True)
+            self._toggle_printer(self.socket_printer, False)
+        elif param == 'sock' and widget.get_active():
+            self._toggle_printer(self.sys_printer, False)
+            self._toggle_printer(self.socket_printer, True)
+
+    def _toggle_printer(self, entry_field, active):
         opacity = 1.0 if active else 0.5
         entry_field.set_property('opacity', opacity)
         entry_field.set_property('can-focus', active)
@@ -92,7 +116,6 @@ class SettingsScreen(Gtk.Dialog):
         result = self.run()
 
         if result == Gtk.ResponseType.CLOSE:
-            print('Close the dialog!')
             pass
 
         self.destroy()
@@ -152,15 +175,7 @@ class SettingsScreen(Gtk.Dialog):
             return {}
 
     def _prepare_to_save(self):
-        settings = {
-            'WAREINFO_API_URL': '',
-            'SOFTCHEQUE_URL': '',
-            'SYS_ENABLE': '',
-            'SYS_PRINTER_NAME': '',
-            'SOCK_ENABLE': '',
-            'SOCK_PRINTER_IP': '',
-            'SOCK_PRINTER_PORT': ''
-        }
+        settings = deepcopy(settings_structure)
 
         ip = envs['SOCK_PRINTER_IP']
         port = envs['SOCK_PRINTER_PORT']
@@ -182,50 +197,80 @@ class SettingsScreen(Gtk.Dialog):
         settings['WAREINFO_API_URL'] = self.wareinfo_api.get_text()
         settings['SOFTCHEQUE_URL'] = self.soft_cheque_api.get_text()
 
-        from pprint import pprint as pp
-        pp(settings)
-
         return settings
-
-    def _push_to_env_variables(self, _dict):
-        for k, v in _dict.items():
-            if type(v) == int:
-                v = str(v)
-            envs[k] = v
-
-    def _save_to_json_file(self, _dict):
-        with open(SETTINGS_FILENAME, 'w') as fp:
-            json.dump(_dict, fp)
 
     def _fill_interface(self):
         self.sys_printer.set_text(envs['SYS_PRINTER_NAME'])
         self.socket_printer.set_text(str(envs['SOCK_PRINTER_IP'] + ':' + envs['SOCK_PRINTER_PORT']))
         self.soft_cheque_api.set_text(envs['SOFTCHEQUE_URL'])
         self.wareinfo_api.set_text(envs['WAREINFO_API_URL'])
-
         if bool(int(envs['SOCK_ENABLE'])):
+            self.socket_printer_radio.set_active(True)
             self.socket_printer_radio.toggled()
         elif bool(int(envs['SYS_ENABLE'])):
+            self.sys_printer_radio.set_active(True)
             self.sys_printer_radio.toggled()
-        # self.socket_printer_radio.set_active(bool(int(envs['SOCK_ENABLE'])))
-        # self.sys_printer_radio.set_active(bool(int(envs['SYS_ENABLE'])))
 
-    def on_save_clicked(self, widget):
-        info = self._validate_incoming_settings()
+    @staticmethod
+    def _push_to_env_variables(_dict):
+        for k, v in _dict.items():
+            if type(v) == int:
+                v = str(v)
+            envs[k] = v
 
-        if info.get('error'):
-            show_gtk_error_modal(self, info['message'])
-            return
+    @staticmethod
+    def _save_to_json_file(_dict):
+        with open(SETTINGS_FILE, 'w') as fp:
+            json.dump(_dict, fp)
 
-        settings = self._prepare_to_save()
-
+    @staticmethod
+    def load_settings(parent_win):
         try:
-            self._save_to_json_file(settings)
+            with open(SETTINGS_FILE, mode='r') as _file:
+                _vars = json.load(_file)
+                SettingsScreen._push_to_env_variables(_vars)
+        except FileNotFoundError:
+            SettingsScreen._create_empty_settings(parent_win)
+            SettingsScreen(parent_win).show_settings()
+            # SettingsScreen._no_settings_warning(parent_win)
+        except Exception as e:
+            msg = 'При попытке чтения файла настроек возникла ошибка: %s \n' \
+                  'Удалите файл настроек "%s" и запустите программу' % (str(e), SETTINGS_FILE)
+            show_gtk_error_modal(parent_win, msg)
+            exit(msg)
+
+    @staticmethod
+    def _no_settings_warning(parent_window):
+        dialog = Gtk.MessageDialog(
+            parent_window, 0, Gtk.MessageType.WARNING, title="Предупреждение!"
+        )
+        dialog.add_button('Создать', Gtk.ResponseType.APPLY)
+        dialog.add_button('Выйти из приложения', Gtk.ResponseType.CANCEL)
+
+        dialog.format_secondary_text('Файл настроек не найден. Создать пустой файл настроек?')
+        res = dialog.run()
+
+        if res == Gtk.ResponseType.CANCEL:
+            parent_window.close()
+        elif res == Gtk.ResponseType.APPLY:
+            SettingsScreen._create_empty_settings(parent_window)
+            SettingsScreen(parent_window).show_settings()
+
+        dialog.destroy()
+
+    @staticmethod
+    def _create_empty_settings(parent_win):
+        settings = deepcopy(settings_structure)
+        SettingsScreen._try_save(parent_win, settings)
+
+    @staticmethod
+    def _try_save(dialog_win, settings):
+        try:
+            SettingsScreen._save_to_json_file(settings)
+            SettingsScreen._push_to_env_variables(settings)
+            return False  # ошибки нет
         except Exception as exc:
             msg = 'Возникло исключение при сохранении файла настроек: \n'
             msg += str(exc)
-            show_gtk_error_modal(self, msg)
-            return
-        self._push_to_env_variables(settings)
-        self.response(Gtk.ResponseType.CLOSE)
-
+            show_gtk_error_modal(dialog_win, msg)
+            return True  # ошибка есть

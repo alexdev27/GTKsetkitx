@@ -137,4 +137,5 @@ def launch():
     win = MyWindow()
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
+    SettingsScreen.load_settings(win)
     Gtk.main()

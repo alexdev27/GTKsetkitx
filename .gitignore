@@ -4,3 +4,8 @@ venv
 
 .env
 settings.*
+*.pdf
+
+build/
+dist/
+*.spec
