@@ -5,7 +5,7 @@ import base64
 import tempfile
 import os
 from io import BytesIO
-from config import PRINT_COMMAND
+from config import PRINT_COMMAND, PREFIX
 from app.zpl_printing.functions import send_to_print
 from app.helpers import make_error, show_gtk_error_modal
 
@@ -14,7 +14,6 @@ def send_to_setkitx(data, window):
     if not data:
         print('Empty data!')
         return
-    # print('data to send ', data)
 
     res = _post_to_setkitx(data)
     if res.get('error'):
@@ -32,7 +31,7 @@ def send_to_setkitx(data, window):
     # отправить на зебру по сокету
     if sock_print:
         print('Выбран принтер для отправки по сокету')
-        send_to_print(res['result']['guid'])
+        send_to_print('%s%s' % (PREFIX, res['result']['guid']))
         pass
 
 
@@ -73,10 +72,10 @@ def make_barcode_image(guid):
     pdf_file.name += '.pdf'
 
     imgTemp = BytesIO()
-    img = code128.image(str(guid))
+    img = code128.image('%s%s' % (PREFIX, guid))
 
     options = {
-        'page-width': '80mm',
+        'page-width': '120mm',
         'page-height': '120mm',
         'encoding': "UTF-8"
     }
@@ -97,4 +96,5 @@ def make_barcode_image(guid):
 
 def _send_barcodeimage_to_printer(pdf_file):
     printer = os.environ['SYS_PRINTER_NAME']
+    printer = '\"{0}\"'.format(printer)
     os.system('{0} {1} {2}'.format(PRINT_COMMAND, printer, pdf_file.name))
