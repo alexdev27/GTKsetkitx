@@ -4,7 +4,7 @@ chardet==3.0.4
 code128==0.3
 idna==2.8
 pdfkit==0.6.1
-Pillow==6.2.1
+Pillow==8.2.0
 pycairo==1.18.2
 PyGObject==3.34.0
 PyGObject-stubs==0.0.2
